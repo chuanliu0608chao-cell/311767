@@ -1,0 +1,11 @@
+2026-07-03 15:50:24 | INFO     | common.database:_get_connection:43 - 数据库连接已创建: /home/lpr/项目/ai-study-coach/data/study_coach.db
+2026-07-03 15:50:24 | ERROR    | common.database:init_db:74 - 数据库初始化失败: no such column: status
+2026-07-03 15:55:44 | INFO     | common.database:_get_connection:43 - 数据库连接已创建: /home/lpr/项目/ai-study-coach/data/study_coach.db
+2026-07-03 15:55:44 | ERROR    | common.database:init_db:74 - 数据库初始化失败: no such column: status
+2026-07-03 15:58:35 | INFO     | common.database:_get_connection:43 - 数据库连接已创建: /home/lpr/项目/ai-study-coach/data/study_coach.db
+2026-07-03 15:58:35 | ERROR    | common.database:init_db:74 - 数据库初始化失败: no such column: status
+2026-07-03 16:01:16 | INFO     | common.database:_get_connection:43 - 数据库连接已创建: /home/lpr/项目/ai-study-coach/data/study_coach.db
+2026-07-03 16:01:17 | INFO     | common.database:init_db:70 - 数据库表结构初始化完成: db_schema.sql
+2026-07-03 16:01:57 | INFO     | common.database:_get_connection:43 - 数据库连接已创建: /home/lpr/项目/ai-study-coach/data/study_coach.db
+2026-07-03 16:01:57 | INFO     | common.database:init_db:70 - 数据库表结构初始化完成: /home/lpr/项目/ai-study-coach/db_schema.sql
+2026-07-03 16:01:57 | INFO     | __main__:<module>:284 - 🚀 AI学习教练系统启动: http://0.0.0.0:5000

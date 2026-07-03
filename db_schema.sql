@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS parent_notifications (
     title           TEXT NOT NULL,
     content         TEXT NOT NULL,
     send_channel    TEXT DEFAULT 'serverchan',  -- 'serverchan', 'wechat', 'dingtalk'
-    send_status     TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'sent', 'failed')),
+    send_status     TEXT DEFAULT 'pending' CHECK(send_status IN ('pending', 'sent', 'failed')),
     sent_at         DATETIME,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id)
@@ -241,7 +241,7 @@ CREATE TABLE IF NOT EXISTS parent_messages (
     message_id      TEXT PRIMARY KEY,
     sender          TEXT NOT NULL,  -- '妈妈', '爸爸', '老师'
     content         TEXT NOT NULL,
-    display_status  TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'displayed', 'dismissed')),
+    display_status  TEXT DEFAULT 'pending' CHECK(display_status IN ('pending', 'displayed', 'dismissed')),
     displayed_at    DATETIME,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -264,7 +264,7 @@ CREATE TABLE IF NOT EXISTS learning_diaries (
 -- 索引优化
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_error_records_subject ON error_records(subject);
-CREATE INDEX IF NOT EXISTS idx_error_records_status ON error_records(status);
+CREATE INDEX IF NOT EXISTS idx_error_records_created ON error_records(created_at);
 CREATE INDEX IF NOT EXISTS idx_review_records_next_date ON review_records(next_review_date);
 CREATE INDEX IF NOT EXISTS idx_exam_questions_exam ON exam_questions(exam_id);
 CREATE INDEX IF NOT EXISTS idx_attempt_scores_attempt ON attempt_scores(attempt_id);

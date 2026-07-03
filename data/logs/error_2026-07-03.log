@@ -1,0 +1,3 @@
+2026-07-03 15:50:24 | ERROR    | common.database:init_db:74 - 数据库初始化失败: no such column: status
+2026-07-03 15:55:44 | ERROR    | common.database:init_db:74 - 数据库初始化失败: no such column: status
+2026-07-03 15:58:35 | ERROR    | common.database:init_db:74 - 数据库初始化失败: no such column: status

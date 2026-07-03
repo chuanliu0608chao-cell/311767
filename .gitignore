@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+data/study_coach.db*
+data/logs/
+.env
