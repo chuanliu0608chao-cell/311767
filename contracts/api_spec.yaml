@@ -1,0 +1,747 @@
+openapi: 3.0.3
+info:
+  title: "个人AI学习教练系统 - 跨端API接口契约"
+  description: "Ubuntu端与Windows端之间的API接口规范，V1.0版本"
+  version: "1.0.0"
+  contact:
+    name: "AI学习教练项目组"
+
+servers:
+  - url: http://localhost:5000
+    description: Ubuntu端本地服务
+
+# ==================== 通用规范 ====================
+# 字段命名：全部蛇形命名（snake_case），禁止驼峰
+# 响应格式：{"code": 0, "data": {}, "msg": ""}
+# 图片传输：multipart/form-data 上传，禁止传本地文件路径
+# 错误码：0成功、1参数错误、2API调用失败、3硬件异常
+
+paths:
+  # ==================== 拍题识别 ====================
+  /api/photo/recognize:
+    post:
+      summary: "拍题识别"
+      description: "Windows端上传照片，Ubuntu端使用GLM-4V识别题目内容"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: 拍摄的照片文件
+                subject:
+                  type: string
+                  enum: [math, chinese, english, physics, chemistry]
+                  description: 学科
+                description:
+                  type: string
+                  description: 额外描述（可选）
+              required:
+                - image
+      responses:
+        '200':
+          description: 识别成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                code: 0
+                data:
+                  question_id: "q_001"
+                  recognized_text: "已知函数 f(x) = x^2 + 2x，求导数 f'(x)"
+                  latex: "f(x) = x^2 + 2x"
+                  knowledge_points: ["函数求导", "幂函数"]
+                  difficulty: "easy"
+                msg: ""
+        '400':
+          description: 参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorJson'
+              example:
+                code: 1
+                data: {}
+                msg: "缺少必要参数: image"
+        '500':
+          description: API调用失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorJson'
+              example:
+                code: 2
+                data: {}
+                msg: "GLM-4V API调用失败"
+
+  # ==================== 错题本 ====================
+  /api/error_book:
+    get:
+      summary: "获取错题列表"
+      description: "获取当前用户的错题列表，支持分页和筛选"
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: 页码
+        - in: query
+          name: page_size
+          schema:
+            type: integer
+            default: 20
+          description: 每页数量
+        - in: query
+          name: subject
+          schema:
+            type: string
+            enum: [math, chinese, english, physics, chemistry]
+          description: 按学科筛选
+        - in: query
+          name: review_status
+          schema:
+            type: string
+            enum: [pending, reviewing, mastered]
+          description: 按复习状态筛选
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/ErrorRecord'
+                          total:
+                            type: integer
+                          page:
+                            type: integer
+                          page_size:
+                            type: integer
+              example:
+                code: 0
+                data:
+                  items:
+                    - question_id: "q_001"
+                      subject: "math"
+                      problem_text: "已知 f(x) = x^2 + 2x"
+                      wrong_answer: "f'(x) = 2"
+                      correct_answer: "f'(x) = 2x + 2"
+                      knowledge_points: ["函数求导"]
+                      created_at: "2025-07-01T10:30:00Z"
+                      review_count: 0
+                      next_review_date: "2025-07-02T10:30:00Z"
+                      status: "pending"
+                  total: 15
+                  page: 1
+                  page_size: 20
+                msg: ""
+
+    post:
+      summary: "添加错题"
+      description: "将识别后的题目加入错题本"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                question_id:
+                  type: string
+                subject:
+                  type: string
+                problem_text:
+                  type: string
+                latex:
+                  type: string
+                knowledge_points:
+                  type: array
+                  items:
+                    type: string
+                wrong_answer:
+                  type: string
+                correct_answer:
+                  type: string
+                difficulty:
+                  type: string
+                  enum: [easy, medium, hard]
+              required:
+                - question_id
+                - subject
+                - problem_text
+      responses:
+        '200':
+          description: 添加成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  # ==================== 出卷 ====================
+  /api/exam/generate:
+    post:
+      summary: "生成试卷"
+      description: "使用DeepSeek生成指定科目的试卷"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                subject:
+                  type: string
+                  enum: [math, chinese, english, physics, chemistry]
+                grade:
+                  type: string
+                  description: 年级，如"七年级"
+                chapter:
+                  type: string
+                  description: 章节（可选）
+                question_count:
+                  type: integer
+                  default: 20
+                  description: 题目数量
+                difficulty_distribution:
+                  type: object
+                  properties:
+                    easy:
+                      type: integer
+                      default: 50
+                    medium:
+                      type: integer
+                      default: 30
+                    hard:
+                      type: integer
+                      default: 20
+                include_answer:
+                  type: boolean
+                  default: true
+              required:
+                - subject
+                - grade
+      responses:
+        '200':
+          description: 生成成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          exam_id:
+                            type: string
+                          questions:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/ExamQuestion'
+                          total_score:
+                            type: integer
+              example:
+                code: 0
+                data:
+                  exam_id: "exam_001"
+                  questions:
+                    - question_id: "q_001"
+                      type: "choice"
+                      score: 5
+                      content: "下列哪个数是质数？"
+                      options: ["A. 4", "B. 5", "C. 6", "D. 8"]
+                      answer: "B"
+                      difficulty: "easy"
+                  total_score: 100
+                msg: ""
+
+  # ==================== 答卷批改 ====================
+  /api/exam/grade:
+    post:
+      summary: "答卷批改"
+      description: "上传答卷图片进行批改"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                exam_id:
+                  type: string
+                  description: 试卷ID
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: 答卷图片（可多页）
+              required:
+                - exam_id
+                - images
+      responses:
+        '200':
+          description: 批改成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          exam_id:
+                            type: string
+                          total_score:
+                            type: integer
+                          question_scores:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                question_id:
+                                  type: string
+                                score:
+                                  type: integer
+                                is_correct:
+                                  type: boolean
+                                comment:
+                                  type: string
+              example:
+                code: 0
+                data:
+                  exam_id: "exam_001"
+                  total_score: 85
+                  question_scores:
+                    - question_id: "q_001"
+                      score: 5
+                      is_correct: true
+                      comment: ""
+                    - question_id: "q_002"
+                      score: 3
+                      is_correct: false
+                      comment: "计算有误，注意符号"
+                msg: ""
+
+  # ==================== 英语口语 ====================
+  /api/english/dialogue:
+    post:
+      summary: "英语口语对话"
+      description: "接收Windows端上传的录音，进行Whisper识别+DeepSeek对话+TTS回复"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                  description: wav格式录音文件
+                mode:
+                  type: string
+                  enum: [free_talk, listening_practice, role_play]
+                  default: "free_talk"
+                  description: 对话模式
+                topic:
+                  type: string
+                  description: 话题（可选，用于听力练习和角色扮演）
+              required:
+                - audio
+      responses:
+        '200':
+          description: 处理成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          recognized_text:
+                            type: string
+                          ai_response:
+                            type: string
+                          tts_audio_url:
+                            type: string
+                            description: TTS音频文件的URL路径
+                          correction:
+                            type: string
+                            nullable: true
+                            description: 语法纠错建议
+              example:
+                code: 0
+                data:
+                  recognized_text: "I like playing basketball."
+                  ai_response: "That's great! What team is your favorite?"
+                  tts_audio_url: "/static/audio/tts_001.wav"
+                  correction: null
+                msg: ""
+
+  # ==================== 目标奖励 ====================
+  /api/goal:
+    get:
+      summary: "获取目标列表"
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Goal'
+              example:
+                code: 0
+                data:
+                  - goal_id: "goal_001"
+                    title: "数学单元测试90分以上"
+                    description: "下次数学测验达到90分以上"
+                    target_points: 50
+                    current_points: 35
+                    status: "active"
+                    progress_percent: 70
+                    created_at: "2025-07-01T00:00:00Z"
+                    deadline: "2025-07-15T00:00:00Z"
+                msg: ""
+
+    post:
+      summary: "创建目标"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                target_points:
+                  type: integer
+                  description: 目标所需积分
+                deadline:
+                  type: string
+                  format: date-time
+                  description: 截止日期
+              required:
+                - title
+                - target_points
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/goal/{goal_id}/redeem:
+    post:
+      summary: "兑换目标"
+      description: "目标达成后兑换奖励"
+      parameters:
+        - in: path
+          name: goal_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reward_type:
+                  type: string
+                  enum: [physical, virtual, experience]
+                  description: 奖励类型
+                reward_description:
+                  type: string
+                  description: 奖励描述
+      responses:
+        '200':
+          description: 兑换成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  # ==================== 学习摘要 ====================
+  /api/summary/daily:
+    get:
+      summary: "获取每日学习摘要"
+      description: "生成今日学习摘要，用于家长推送"
+      parameters:
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date
+            description: 日期，默认今天
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          date:
+                            type: string
+                          completed_tasks:
+                            type: integer
+                          total_tasks:
+                            type: integer
+                          weak_points:
+                            type: array
+                            items:
+                              type: string
+                          tomorrow_suggestions:
+                            type: string
+                          earned_points:
+                            type: integer
+              example:
+                code: 0
+                data:
+                  date: "2025-07-01"
+                  completed_tasks: 12
+                  total_tasks: 15
+                  weak_points: ["函数求导", "英语时态"]
+                  tomorrow_suggestions: "建议重点复习函数求导和英语时态"
+                  earned_points: 35
+                msg: ""
+
+  # ==================== 知识点/知识图谱 ====================
+  /api/knowledge/graph:
+    get:
+      summary: "获取知识图谱"
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          nodes:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/KnowledgeNode'
+                          edges:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                source:
+                                  type: string
+                                target:
+                                  type: string
+                                relation:
+                                  type: string
+              example:
+                code: 0
+                data:
+                  nodes:
+                    - id: "kp_001"
+                      name: "函数求导"
+                      subject: "math"
+                      mastery: 0.6
+                      life_skill_tags: ["逻辑思维"]
+                  edges:
+                    - source: "kp_001"
+                      target: "kp_002"
+                      relation: "prerequisite"
+                msg: ""
+
+  # ==================== 家长消息 ====================
+  /api/parent/message:
+    post:
+      summary: "发送家长消息"
+      description: "Windows端调用此接口发送消息，在番茄钟休息时弹窗展示"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                sender:
+                  type: string
+                  description: 发送者（如"妈妈"、"爸爸"）
+              required:
+                - message
+      responses:
+        '200':
+          description: 消息已接收
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+# ==================== 数据模型 ====================
+components:
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: 错误码：0成功、1参数错误、2API调用失败、3硬件异常
+        data:
+          type: object
+          description: 响应数据
+        msg:
+          type: string
+          description: 提示信息
+
+    ErrorJson:
+      type: object
+      properties:
+        code:
+          type: integer
+        data:
+          type: object
+        msg:
+          type: string
+
+    ErrorRecord:
+      type: object
+      properties:
+        question_id:
+          type: string
+        subject:
+          type: string
+        problem_text:
+          type: string
+        latex:
+          type: string
+        knowledge_points:
+          type: array
+          items:
+            type: string
+        wrong_answer:
+          type: string
+        correct_answer:
+          type: string
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        created_at:
+          type: string
+          format: date-time
+        review_count:
+          type: integer
+        next_review_date:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [pending, reviewing, mastered]
+
+    ExamQuestion:
+      type: object
+      properties:
+        question_id:
+          type: string
+        type:
+          type: string
+          enum: [choice, fill_blank, calculation, essay]
+        score:
+          type: integer
+        content:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        answer:
+          type: string
+        difficulty:
+          type: string
+
+    Goal:
+      type: object
+      properties:
+        goal_id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        target_points:
+          type: integer
+        current_points:
+          type: integer
+        status:
+          type: string
+          enum: [active, frozen, confirmed, cancelled]
+        progress_percent:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        deadline:
+          type: string
+          format: date-time
+
+    KnowledgeNode:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        subject:
+          type: string
+        mastery:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: 掌握程度 0-1
+        life_skill_tags:
+          type: array
+          items:
+            type: string
+          description: 人生技能标签（预留字段）

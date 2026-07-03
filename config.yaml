@@ -1,0 +1,73 @@
+# 个人AI学习教练系统 V1.0 配置
+
+app:
+  name: "AI学习教练系统"
+  version: "1.0.0"
+  host: "0.0.0.0"
+  port: 5000
+  debug: false
+
+database:
+  path: "./data/study_coach.db"
+  retry_times: 3
+  retry_delay_ms: 100
+
+# AI API 配置
+ai:
+  deepseek:
+    api_key: "${DEEPSEEK_API_KEY}"  # 从环境变量读取
+    base_url: "https://api.deepseek.com/v1"
+    model: "deepseek-chat"
+  glm4v:
+    api_key: "${ZHIPU_API_KEY}"  # 从环境变量读取
+    base_url: "https://open.bigmodel.cn/api/paas/v4"
+    model: "glm-4v-plus"
+
+# Whisper 配置
+whisper:
+  model_size: "small"  # small / base / medium
+  device: "cpu"  # cpu / cuda
+  language: "zh"
+
+# TTS 配置
+tts:
+  preferred_provider: "edge-tts"  # edge-tts / pyttsx3
+  voice_zh: "zh-CN-YunxiNeural"
+  voice_en: "en-US-GuyNeural"
+  rate: 150
+  volume: 80
+
+# 提醒配置
+reminder:
+  boot_message: "早安！今天也要加油学习哦~"
+  schedule:
+    - time: "07:30"
+      message: "起床洗漱，准备开始今天的学习！"
+    - time: "08:00"
+      message: "开始晨读，大声朗读课文！"
+    - time: "12:00"
+      message: "午间复习时间，回顾上午的知识点！"
+    - time: "14:00"
+      message: "下午学习开始，加油！"
+    - time: "21:00"
+      message: "一天学习结束，做好明天的计划！"
+
+# Obsidian 归档
+obsidian:
+  vault_path: "/home/lpr/obsidian/study-coach-vault"
+  sync_interval_hours: 24
+
+# 家长推送
+parent_notify:
+  enabled: false
+  channel: "serverchan"  # serverchan / wechat / dingtalk
+  token: "${SERVERCHAN_TOKEN}"
+
+# 预留扩展
+reserved:
+  # 多用户支持：V1.0 写死 user_id=1
+  default_user_id: 1
+  # 语音唤醒词预留
+  wake_word: ""
+  # 外部内容源预留
+  content_sources: []
