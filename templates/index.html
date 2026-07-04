@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI学习教练系统</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --sidebar-bg: #161825;
+    --card: #1a1d2e;
+    --card-hover: #222640;
+    --border: #2a2f45;
+    --text: #e4e6f0;
+    --text-dim: #8b8fa8;
+    --accent: #6c8cff;
+    --accent-light: rgba(108,140,255,0.12);
+    --green: #4ade80;
+    --yellow: #facc15;
+    --red: #f87171;
+    --purple: #a78bfa;
+    --cyan: #22d3ee;
+    --orange: #fb923c;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 240px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+  }
+  .sidebar-logo {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo h1 {
+    font-size: 18px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #6c8cff, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .sidebar-logo .version {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  .sidebar-nav {
+    flex: 1;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    width: 100%;
+  }
+  .nav-btn:hover {
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+  }
+  .nav-btn.active {
+    background: var(--accent-light);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .nav-btn .nav-icon {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+  }
+  .sidebar-footer {
+    padding: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Main Content */
+  .main {
+    flex: 1;
+    margin-left: 240px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top Bar */
+  .topbar {
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--sidebar-bg);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .topbar h2 {
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .topbar .actions {
+    display: flex;
+    gap: 8px;
+  }
+  .btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover { background: var(--card-hover); }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    font-weight: 600;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-danger {
+    background: rgba(248,113,113,0.15);
+    border-color: rgba(248,113,113,0.3);
+    color: var(--red);
+  }
+  .btn-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+  .refresh-btn {
+    background: rgba(108,140,255,0.1);
+    border: 1px solid rgba(108,140,255,0.3);
+    color: var(--accent);
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+  .refresh-btn:hover { background: rgba(108,140,255,0.2); }
+
+  /* Page Content */
+  .page-content {
+    padding: 24px 32px;
+    flex: 1;
+  }
+
+  /* Page Sections */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-header h3 {
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-body { padding: 20px; }
+
+  /* Stats Grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    transition: all 0.3s;
+  }
+  .stat-card:hover {
+    background: var(--card-hover);
+    transform: translateY(-1px);
+  }
+  .stat-card .stat-icon {
+    font-size: 22px;
+    margin-bottom: 10px;
+  }
+  .stat-card .stat-value {
+    font-size: 26px;
+    font-weight: 700;
+  }
+  .stat-card .stat-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  th {
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-math { background: rgba(108,140,255,0.15); color: var(--accent); }
+  .badge-chinese { background: rgba(248,113,113,0.15); color: var(--red); }
+  .badge-english { background: rgba(74,222,128,0.15); color: var(--green); }
+  .badge-physics { background: rgba(250,204,21,0.15); color: var(--yellow); }
+  .badge-chemistry { background: rgba(167,139,250,0.15); color: var(--purple); }
+  .badge-easy { background: rgba(74,222,128,0.12); color: var(--green); }
+  .badge-medium { background: rgba(250,204,21,0.12); color: var(--yellow); }
+  .badge-hard { background: rgba(248,113,113,0.12); color: var(--red); }
+
+  /* Filters */
+  .filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-select, .filter-input {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+  }
+  .filter-select:focus, .filter-input:focus {
+    border-color: var(--accent);
+  }
+
+  /* Forms */
+  .form-group {
+    margin-bottom: 16px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .form-input, .form-textarea, .form-select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus, .form-textarea:focus, .form-select:focus {
+    border-color: var(--accent);
+  }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 600px) {
+    .form-row { grid-template-columns: 1fr; }
+  }
+
+  /* Progress Bar */
+  .progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .progress-bar .fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s ease;
+  }
+
+  /* Goal Item */
+  .goal-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .goal-item .goal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .goal-item .goal-title {
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .goal-item .goal-meta {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* Upload Zone */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: rgba(108,140,255,0.02);
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .upload-zone .upload-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.6;
+  }
+  .upload-zone .upload-text {
+    font-size: 15px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .upload-zone .upload-hint {
+    font-size: 12px;
+    color: var(--text-dim);
+    opacity: 0.6;
+  }
+
+  /* Recognition Result */
+  .recog-result {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 16px;
+  }
+  .recog-result .field {
+    margin-bottom: 12px;
+  }
+  .recog-result .field-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .recog-result .field-value {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Exam Question */
+  .exam-q {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .exam-q .q-num {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .exam-q .q-content {
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+  .exam-q .q-meta {
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  /* Empty State */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-dim);
+  }
+  .empty-state .empty-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    opacity: 0.4;
+  }
+
+  /* Loading */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    transition: opacity 0.4s;
+  }
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+  }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    width: 440px;
+    max-width: 90vw;
+  }
+  .modal h3 { margin-bottom: 20px; font-size: 17px; }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .modal-actions .btn { flex: 1; justify-content: center; }
+
+  /* Toast */
+  .toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .toast {
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    animation: slideIn 0.3s ease;
+    max-width: 360px;
+  }
+  .toast-success { background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.3); color: var(--green); }
+  .toast-error { background: rgba(248,113,113,0.15); border: 1px solid rgba(248,113,113,0.3); color: var(--red); }
+  .toast-info { background: rgba(108,140,255,0.15); border: 1px solid rgba(108,140,255,0.3); color: var(--accent); }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .sidebar { width: 60px; }
+    .sidebar .nav-label, .sidebar-logo h1, .sidebar-logo .version, .sidebar-footer span { display: none; }
+    .sidebar-logo { text-align: center; padding: 16px 8px; }
+    .sidebar-logo h1 { font-size: 20px; }
+    .nav-btn { justify-content: center; padding: 10px; }
+    .nav-btn .nav-icon { width: auto; }
+    .main { margin-left: 60px; }
+    .page-content { padding: 16px; }
+    .topbar { padding: 12px 16px; }
+  }
+</style>
+  <!-- ECharts -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div style="text-align:center">
+    <div class="spinner"></div>
+    <p style="margin-top:14px;color:var(--text-dim);font-size:13px">加载中...</p>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <h1>🎓 AI教练</h1>
+    <div class="version">V1.0 · Ubuntu</div>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="nav-btn active" data-page="dashboard" onclick="switchPage('dashboard')">
+      <span class="nav-icon">📊</span><span class="nav-label">总览</span>
+    </button>
+    <button class="nav-btn" data-page="errorbook" onclick="switchPage('errorbook')">
+      <span class="nav-icon">📚</span><span class="nav-label">错题本</span>
+    </button>
+    <button class="nav-btn" data-page="photo" onclick="switchPage('photo')">
+      <span class="nav-icon">📸</span><span class="nav-label">拍题识别</span>
+    </button>
+    <button class="nav-btn" data-page="exam" onclick="switchPage('exam')">
+      <span class="nav-icon">📝</span><span class="nav-label">智能出卷</span>
+    </button>
+    <button class="nav-btn" data-page="goals" onclick="switchPage('goals')">
+      <span class="nav-icon">🎯</span><span class="nav-label">目标奖励</span>
+    </button>
+    <button class="nav-btn" data-page="points" onclick="switchPage('points')">
+      <span class="nav-icon">⭐</span><span class="nav-label">积分明细</span>
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    <span class="status-dot"></span>
+    <span>服务运行中</span>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <h2 id="pageTitle">📊 系统总览</h2>
+    <div class="actions">
+      <button class="refresh-btn" onclick="refreshCurrentPage()">⟳ 刷新</button>
+    </div>
+  </div>
+
+  <div class="page-content">
+
+    <!-- ========== Dashboard ========== -->
+    <div class="page active" id="page-dashboard">
+      <div id="dashGreeting" style="margin-bottom:24px">
+        <div style="font-size:22px;font-weight:600" id="greetText"></div>
+        <div style="font-size:13px;color:var(--text-dim);margin-top:4px" id="greetDate"></div>
+      </div>
+
+      <div class="stats-grid" id="dashStats"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="dashGrid">
+        <div class="card">
+          <div class="card-header"><h3>📅 今日学习</h3></div>
+          <div class="card-body" id="dashToday"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>🎯 目标进度</h3></div>
+          <div class="card-body" id="dashGoals"></div>
+        </div>
+      </div>
+
+      <!-- ECharts 可视化 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:16px">
+        <div class="card">
+          <div class="card-header"><h3>📈 分数趋势</h3></div>
+          <div class="card-body" style="padding:0">
+            <div id="chartTrend" style="width:100%;height:260px"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>🍩 错题分布</h3></div>
+          <div class="card-body" style="padding:0">
+            <div id="chartErrors" style="width:100%;height:260px"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>🎯 知识点掌握</h3></div>
+          <div class="card-body" style="padding:0">
+            <div id="chartMastery" style="width:100%;height:260px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== Error Book ========== -->
+    <div class="page" id="page-errorbook">
+      <div class="filters">
+        <select class="filter-select" id="filterSubject" onchange="loadErrorBook()">
+          <option value="">全部学科</option>
+          <option value="math">数学</option>
+          <option value="chinese">语文</option>
+          <option value="english">英语</option>
+          <option value="physics">物理</option>
+          <option value="chemistry">化学</option>
+        </select>
+        <span style="font-size:13px;color:var(--text-dim)" id="errorCount">共 0 条</span>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>学科</th>
+                <th>题目</th>
+                <th>知识点</th>
+                <th>难度</th>
+                <th>时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="errorTableBody">
+              <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📚</div>暂无错题记录</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== Photo Recognition ========== -->
+    <div class="page" id="page-photo">
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📸</div>
+        <div class="upload-text">点击或拖拽上传照片</div>
+        <div class="upload-hint">支持 JPEG、PNG 格式</div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFileSelect(event)">
+      <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+        <select class="filter-select" id="photoSubject">
+          <option value="math">数学</option>
+          <option value="chinese">语文</option>
+          <option value="english">英语</option>
+          <option value="physics">物理</option>
+          <option value="chemistry">化学</option>
+        </select>
+        <input class="filter-input" id="photoDesc" placeholder="额外描述（可选）" style="flex:1">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="addToErrorBook" checked> 自动入库
+        </label>
+      </div>
+      <div id="photoResult"></div>
+    </div>
+
+    <!-- ========== Exam Generation ========== -->
+    <div class="page" id="page-exam">
+      <div class="card">
+        <div class="card-header"><h3>📝 生成试卷</h3></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>学科</label>
+              <select class="form-select" id="examSubject">
+                <option value="math">数学</option>
+                <option value="chinese">语文</option>
+                <option value="english">英语</option>
+                <option value="physics">物理</option>
+                <option value="chemistry">化学</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>年级</label>
+              <select class="form-select" id="examGrade">
+                <option value="七年级">七年级</option>
+                <option value="八年级">八年级</option>
+                <option value="九年级">九年级</option>
+                <option value="高一">高一</option>
+                <option value="高二">高二</option>
+                <option value="高三">高三</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>章节（可选）</label>
+              <input class="form-input" id="examChapter" placeholder="例如：函数求导">
+            </div>
+            <div class="form-group">
+              <label>题目数量</label>
+              <input type="number" class="form-input" id="examCount" value="20" min="5" max="50">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="generateExam()" id="genExamBtn">🚀 生成试卷</button>
+        </div>
+      </div>
+      <div id="examResult" style="margin-top:20px"></div>
+    </div>
+
+    <!-- ========== Goals ========== -->
+    <div class="page" id="page-goals">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div>
+          <div style="font-size:13px;color:var(--text-dim)">可用积分</div>
+          <div style="font-size:28px;font-weight:700;color:var(--yellow)" id="goalPoints">0</div>
+        </div>
+        <button class="btn btn-primary" onclick="showCreateGoalModal()">＋ 创建目标</button>
+      </div>
+      <div id="goalsList"></div>
+    </div>
+
+    <!-- ========== Points ========== -->
+    <div class="page" id="page-points">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">⭐</div>
+          <div class="stat-value" id="ptsTotal" style="color:var(--yellow)">0</div>
+          <div class="stat-label">总积分</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-value" id="ptsAvailable" style="color:var(--green)">0</div>
+          <div class="stat-label">可用积分</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔒</div>
+          <div class="stat-value" id="ptsFrozen" style="color:var(--orange)">0</div>
+          <div class="stat-label">冻结积分</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>📋 交易记录</h3></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>来源</th><th>描述</th><th>积分变动</th><th>时间</th></tr></thead>
+            <tbody id="pointsTableBody">
+              <tr><td colspan="4"><div class="empty-state"><div class="empty-icon">📭</div>暂无交易记录</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Create Goal Modal -->
+<div id="goalModal" class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <h3>🎯 创建新目标</h3>
+    <div class="form-group">
+      <label>目标名称</label>
+      <input class="form-input" id="goalTitle" placeholder="例如：一周掌握函数求导">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>需要积分</label>
+        <input type="number" class="form-input" id="goalTarget" placeholder="100">
+      </div>
+      <div class="form-group">
+        <label>截止日期</label>
+        <input type="date" class="form-input" id="goalDeadline">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>描述（可选）</label>
+      <textarea class="form-textarea" id="goalDesc" placeholder="目标的详细说明"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeGoalModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitGoal()">创建目标</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== Navigation ==========
+const pageTitles = {
+  dashboard: '📊 系统总览',
+  errorbook: '📚 错题本',
+  photo: '📸 拍题识别',
+  exam: '📝 智能出卷',
+  goals: '🎯 目标奖励',
+  points: '⭐ 积分明细'
+};
+
+let currentPage = 'dashboard';
+
+function switchPage(name) {
+  currentPage = name;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === name));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + name));
+  document.getElementById('pageTitle').textContent = pageTitles[name] || name;
+
+  // Load page data
+  if (name === 'dashboard') loadDashboard();
+  else if (name === 'errorbook') loadErrorBook();
+  else if (name === 'goals') loadGoals();
+  else if (name === 'points') loadPoints();
+
+  // Resize charts on page switch
+  if (typeof echarts !== 'undefined') {
+    [chartTrend, chartErrors, chartMastery].forEach(c => c?.resize());
+  }
+}
+
+// ========== Toast ==========
+function showToast(msg, type = 'info') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ========== Greeting ==========
+function updateGreeting() {
+  const now = new Date();
+  const h = now.getHours();
+  let g = '早上好';
+  if (h >= 12 && h < 14) g = '中午好';
+  else if (h >= 14 && h < 18) g = '下午好';
+  else if (h >= 18) g = '晚上好';
+  const days = ['日','一','二','三','四','五','六'];
+  document.getElementById('greetText').textContent = `${g}！`;
+  document.getElementById('greetDate').textContent =
+    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 星期${days[now.getDay()]}`;
+}
+
+// ========== API Helpers ==========
+async function api(url, options = {}) {
+  try {
+    const res = await fetch(url, options);
+    return await res.json();
+  } catch (e) {
+    showToast('网络请求失败: ' + e.message, 'error');
+    return null;
+  }
+}
+
+// ========== Dashboard ==========
+async function loadDashboard() {
+  const d = await api('/api/dashboard');
+  if (!d) return;
+  const ds = d.data;
+
+  // Stats
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value">${ds.today_stats?.new_errors || 0}</div><div class="stat-label">错题总数</div></div>
+    <div class="stat-card"><div class="stat-icon">🔄</div><div class="stat-value">${ds.today_stats?.pending_reviews || 0}</div><div class="stat-label">待复习</div></div>
+    <div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-value">${ds.points?.available_points || 0}</div><div class="stat-label">可用积分</div></div>
+    <div class="stat-card"><div class="stat-icon">🎯</div><div class="stat-value">${ds.active_goals?.length || 0}</div><div class="stat-label">进行中目标</div></div>
+  `;
+
+  // Today
+  document.getElementById('dashToday').innerHTML = `
+    <div style="margin-bottom:10px;font-size:14px"><span style="color:var(--text-dim)">今日新增错题：</span><strong>${ds.today_stats?.new_errors || 0}</strong></div>
+    <div style="margin-bottom:10px;font-size:14px"><span style="color:var(--text-dim)">今日待复习：</span><strong>${ds.today_stats?.pending_reviews || 0}</strong></div>
+    <div style="font-size:14px"><span style="color:var(--text-dim)">今日获得积分：</span><strong>${ds.points?.total_points || 0}</strong></div>
+  `;
+
+  // Goals
+  const goals = ds.active_goals || [];
+  if (goals.length > 0) {
+    document.getElementById('dashGoals').innerHTML = goals.slice(0, 3).map(g => {
+      const pct = g.progress_percent || 0;
+      const color = pct >= 100 ? 'var(--green)' : pct >= 50 ? 'var(--accent)' : 'var(--yellow)';
+      return `<div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+          <span>${g.title}</span><span style="color:var(--text-dim)">${Math.round(pct)}%</span>
+        </div>
+        <div class="progress-bar"><div class="fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>`;
+    }).join('');
+  } else {
+    document.getElementById('dashGoals').innerHTML = '<div class="empty-state" style="padding:20px"><div class="empty-icon">🎯</div><div style="font-size:13px">还没有目标，去创建第一个吧！</div></div>';
+  }
+
+  // 加载 ECharts 图表
+  loadCharts();
+}
+
+// ========== ECharts 图表 ==========
+let chartTrend = null, chartErrors = null, chartMastery = null;
+
+async function loadCharts() {
+  // 分数趋势
+  const trendEl = document.getElementById('chartTrend');
+  if (trendEl && typeof echarts !== 'undefined') {
+    if (!chartTrend) chartTrend = echarts.init(trendEl);
+    const td = await api('/api/dashboard/stats/trend');
+    if (td && td.data.trend) {
+      const dates = td.data.trend.map(t => t.date.slice(5));
+      // 取每天的平均分
+      const scores = td.data.trend.map(t => {
+        if (!t.scores.length) return 0;
+        return Math.round(t.scores.reduce((a, b) => a + b, 0) / t.scores.length);
+      });
+      chartTrend.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { top: 10, right: 20, bottom: 30, left: 40 },
+        xAxis: { type: 'category', data: dates, axisLabel: { color: '#8b8fa8', fontSize: 10 } },
+        yAxis: { type: 'value', min: 0, max: 100, axisLabel: { color: '#8b8fa8', fontSize: 10 }, splitLine: { lineStyle: { color: '#2a2f45' } } },
+        series: [{
+          type: 'line', data: scores, smooth: true,
+          lineStyle: { color: '#6c8cff', width: 2 },
+          itemStyle: { color: '#6c8cff' },
+          areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(108,140,255,0.3)' }, { offset: 1, color: 'rgba(108,140,255,0)' }] } },
+        }]
+      });
+    }
+  }
+
+  // 错题分布
+  const errEl = document.getElementById('chartErrors');
+  if (errEl && typeof echarts !== 'undefined') {
+    if (!chartErrors) chartErrors = echarts.init(errEl);
+    const ed = await api('/api/dashboard/stats/errors');
+    if (ed && ed.data.distribution && ed.data.distribution.length > 0) {
+      chartErrors.setOption({
+        tooltip: { trigger: 'item' },
+        series: [{
+          type: 'pie', radius: ['40%', '70%'], center: ['50%', '50%'],
+          label: { color: '#e4e6f0', fontSize: 11 },
+          labelLine: { lineStyle: { color: '#2a2f45' } },
+          data: ed.data.distribution,
+          color: ['#6c8cff', '#f87171', '#4ade80', '#facc15', '#a78bfa'],
+        }]
+      });
+    } else {
+      chartErrors.setOption({
+        series: [{ type: 'pie', radius: '50%', label: { show: true }, data: [{ name: '暂无错题', value: 1, itemStyle: { color: '#2a2f45' } }] }]
+      });
+    }
+  }
+
+  // 知识点掌握度
+  const mastEl = document.getElementById('chartMastery');
+  if (mastEl && typeof echarts !== 'undefined') {
+    if (!chartMastery) chartMastery = echarts.init(mastEl);
+    const md = await api('/api/dashboard/stats/mastery');
+    if (md && md.data.points && md.data.points.length > 0) {
+      const pts = md.data.points.slice(0, 12);
+      chartMastery.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { top: 10, right: 10, bottom: 50, left: 10 },
+        xAxis: { type: 'category', data: pts.map(p => p.name.length > 4 ? p.name.slice(0, 4) + '..' : p.name), axisLabel: { color: '#8b8fa8', fontSize: 10, rotate: 30 } },
+        yAxis: { type: 'value', max: 1, axisLabel: { color: '#8b8fa8', fontSize: 10, formatter: '{value}%' }, splitLine: { lineStyle: { color: '#2a2f45' } } },
+        series: [{
+          type: 'bar', barWidth: '50%',
+          data: pts.map(p => Math.round(p.mastery_level * 100)),
+          itemStyle: {
+            color: (params) => {
+              const v = params.value;
+              if (v < 40) return '#f87171';
+              if (v < 70) return '#facc15';
+              return '#4ade80';
+            }
+          },
+          label: { show: true, position: 'top', color: '#8b8fa8', fontSize: 10, formatter: '{c}%' },
+        }]
+      });
+    } else {
+      chartMastery.setOption({
+        series: [{ type: 'gauge', detail: { formatter: '暂无数据', color: '#8b8fa8' }, pointer: { show: false }, axisLine: { lineStyle: { color: [1] } }, data: [{ value: 0, name: '知识点掌握度' }] }]
+      });
+    }
+  }
+}
+
+// ========== Error Book ==========
+async function loadErrorBook() {
+  const subject = document.getElementById('filterSubject').value;
+  const url = `/api/error_book?page_size=100${subject ? '&subject=' + subject : ''}`;
+  const d = await api(url);
+  if (!d) return;
+
+  const items = d.data.items || [];
+  document.getElementById('errorCount').textContent = `共 ${d.data.total || 0} 条`;
+
+  const tbody = document.getElementById('errorTableBody');
+  if (items.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📚</div>暂无错题记录</div></td></tr>';
+    return;
+  }
+
+  const subjLabels = { math:'数学', chinese:'语文', english:'英语', physics:'物理', chemistry:'化学' };
+  const diffLabels = { easy:'简单', medium:'中等', hard:'困难' };
+
+  tbody.innerHTML = items.map(e => `
+    <tr>
+      <td><span class="badge badge-${e.subject}">${subjLabels[e.subject] || e.subject}</span></td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(e.problem_text)}">${escHtml(e.problem_text)}</td>
+      <td style="font-size:12px;color:var(--text-dim)">${escHtml(e.knowledge_points || '')}</td>
+      <td><span class="badge badge-${e.difficulty}">${diffLabels[e.difficulty] || e.difficulty}</span></td>
+      <td style="font-size:12px;color:var(--text-dim)">${e.created_at ? e.created_at.slice(5,16) : '-'}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="deleteError('${e.record_id}')">删除</button></td>
+    </tr>
+  `).join('');
+}
+
+async function deleteError(id) {
+  if (!confirm('确定删除这条错题？')) return;
+  // TODO: implement DELETE endpoint
+  showToast('删除功能待实现', 'info');
+}
+
+// ========== Photo Recognition ==========
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
+});
+
+function handleFileSelect(e) {
+  if (e.target.files.length) processFile(e.target.files[0]);
+}
+
+async function processFile(file) {
+  const subject = document.getElementById('photoSubject').value;
+  const desc = document.getElementById('photoDesc').value;
+  const addToError = document.getElementById('addToErrorBook').checked;
+
+  const formData = new FormData();
+  formData.append('image', file);
+  formData.append('subject', subject);
+  if (desc) formData.append('description', desc);
+  formData.append('add_to_error_book', addToError ? 'true' : 'false');
+
+  document.getElementById('photoResult').innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto"></div><div style="margin-top:12px">识别中...</div></div>';
+
+  const d = await api('/api/photo/recognize', { method: 'POST', body: formData });
+  if (!d) return;
+
+  const data = d.data;
+  if (data.error) {
+    document.getElementById('photoResult').innerHTML = `<div class="recog-result" style="border-color:rgba(248,113,113,0.3)"><div style="color:var(--red)">识别失败: ${escHtml(data.error)}</div></div>`;
+    return;
+  }
+
+  const subjLabels = { math:'数学', chinese:'语文', english:'英语', physics:'物理', chemistry:'化学' };
+  const diffLabels = { easy:'简单', medium:'中等', hard:'困难' };
+
+  document.getElementById('photoResult').innerHTML = `
+    <div class="recog-result">
+      <div style="font-weight:600;margin-bottom:12px;font-size:15px">✅ 识别结果</div>
+      <div class="field"><div class="field-label">题目内容</div><div class="field-value">${escHtml(data.recognized_text || '无')}</div></div>
+      ${data.latex ? `<div class="field"><div class="field-label">LaTeX 公式</div><div class="field-value" style="font-family:monospace">${escHtml(data.latex)}</div></div>` : ''}
+      <div class="field"><div class="field-label">知识点</div><div class="field-value">${(data.knowledge_points||[]).map(k=>`<span class="badge badge-${subject}" style="margin-right:4px">${k}</span>`).join('')}</div></div>
+      <div class="field"><div class="field-label">难度</div><div class="field-value"><span class="badge badge-${data.difficulty}">${diffLabels[data.difficulty] || data.difficulty}</span></div></div>
+      ${data.answer ? `<div class="field"><div class="field-label">参考答案</div><div class="field-value">${escHtml(data.answer)}</div></div>` : ''}
+      ${data.solution_steps && data.solution_steps.length ? `<div class="field"><div class="field-label">解题步骤</div><div class="field-value">${data.solution_steps.map((s,i)=>`${i+1}. ${escHtml(s)}`).join('<br>')}</div></div>` : ''}
+      ${data.error_record_id ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:13px;color:var(--green)">✅ 已自动入库，记录号: ${data.error_record_id}</div>` : ''}
+    </div>
+  `;
+  showToast('识别完成', 'success');
+}
+
+// ========== Exam Generation ==========
+async function generateExam() {
+  const subject = document.getElementById('examSubject').value;
+  const grade = document.getElementById('examGrade').value;
+  const chapter = document.getElementById('examChapter').value;
+  const count = parseInt(document.getElementById('examCount').value) || 20;
+
+  const btn = document.getElementById('genExamBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 生成中...';
+  document.getElementById('examResult').innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto"></div><div style="margin-top:12px">AI 正在出题，请稍候...</div></div>';
+
+  const d = await api('/api/exam/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subject, grade, chapter, question_count: count })
+  });
+
+  btn.disabled = false;
+  btn.textContent = '🚀 生成试卷';
+
+  if (!d || d.data.error) {
+    document.getElementById('examResult').innerHTML = `<div class="card"><div class="card-body"><div style="color:var(--red)">生成失败: ${escHtml(d?.data?.error || '未知错误')}</div><div style="font-size:12px;color:var(--text-dim);margin-top:8px">提示：请检查 DeepSeek API 配置</div></div></div>`;
+    return;
+  }
+
+  const data = d.data;
+  const questions = data.questions || [];
+  const typeLabels = { choice:'选择题', fill_blank:'填空题', calculation:'计算题', essay:'问答题' };
+  const diffMap = { easy:'简单', medium:'中等', hard:'困难' };
+
+  document.getElementById('examResult').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <h3>📄 试卷 — ${subject} · ${grade}${chapter ? ' · ' + chapter : ''}</h3>
+        <span style="font-size:13px;color:var(--text-dim)">${questions.length} 题 · 总分 ${data.total_score || 100}</span>
+      </div>
+      <div class="card-body">
+        ${questions.map((q, i) => `
+          <div class="exam-q">
+            <div class="q-num">第 ${i+1} 题 · ${typeLabels[q.type] || q.type} · ${q.score || 5} 分</div>
+            <div class="q-content">${escHtml(q.content || '')}</div>
+            ${q.options && q.options.length ? `<div style="font-size:13px;color:var(--text-dim);margin-bottom:6px">${q.options.map(o => escHtml(o)).join('<br>')}</div>` : ''}
+            <div class="q-meta">
+              <span class="badge badge-${q.difficulty || 'medium'}" style="font-size:11px">${diffMap[q.difficulty] || q.difficulty}</span>
+              <span style="color:var(--text-dim)">知识点: ${escHtml(q.knowledge_point || '-')}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  showToast(`试卷生成成功：${questions.length} 题`, 'success');
+}
+
+// ========== Goals ==========
+async function loadGoals() {
+  const d = await api('/api/goal');
+  if (!d) return;
+
+  const pts = d.data.points;
+  document.getElementById('goalPoints').textContent = pts?.available_points || 0;
+
+  const goals = d.data.goals || [];
+  const container = document.getElementById('goalsList');
+
+  if (goals.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🎯</div><div style="font-size:14px">还没有目标</div><div style="font-size:13px;color:var(--text-dim);margin-top:4px">点击上方"创建目标"开始</div></div>';
+    return;
+  }
+
+  const statusLabels = { active:'进行中', frozen:'冻结中', confirmed:'已达成', cancelled:'已取消' };
+  const statusColors = { active:'var(--green)', frozen:'var(--yellow)', confirmed:'var(--accent)', cancelled:'var(--text-dim)' };
+
+  container.innerHTML = goals.map(g => {
+    const pct = g.progress_percent || 0;
+    const color = pct >= 100 ? 'var(--green)' : pct >= 50 ? 'var(--accent)' : 'var(--yellow)';
+    return `<div class="goal-item">
+      <div class="goal-header">
+        <div class="goal-title">${escHtml(g.title)}</div>
+        <span class="badge" style="background:${statusColors[g.status] || 'var(--text-dim)'}20;color:${statusColors[g.status] || 'var(--text-dim)'}">${statusLabels[g.status] || g.status}</span>
+      </div>
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:6px">${g.description || ''}</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+        <span>${g.current_points || 0} / ${g.target_points} 积分</span>
+        <span>${Math.round(pct)}%</span>
+      </div>
+      <div class="progress-bar"><div class="fill" style="width:${pct}%;background:${color}"></div></div>
+      ${g.deadline ? `<div class="goal-meta">截止: ${g.deadline.slice(0,10)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function showCreateGoalModal() {
+  document.getElementById('goalModal').style.display = 'flex';
+}
+function closeGoalModal() {
+  document.getElementById('goalModal').style.display = 'none';
+}
+
+async function submitGoal() {
+  const title = document.getElementById('goalTitle').value.trim();
+  const target = parseInt(document.getElementById('goalTarget').value);
+  const desc = document.getElementById('goalDesc').value.trim();
+  const deadline = document.getElementById('goalDeadline').value;
+
+  if (!title || !target) { showToast('请填写目标名称和所需积分', 'error'); return; }
+
+  const d = await api('/api/goal', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, target_points: target, description: desc, deadline: deadline || undefined })
+  });
+
+  if (d && d.code === 0) {
+    showToast('目标创建成功！', 'success');
+    closeGoalModal();
+    document.getElementById('goalTitle').value = '';
+    document.getElementById('goalTarget').value = '';
+    document.getElementById('goalDesc').value = '';
+    document.getElementById('goalDeadline').value = '';
+    loadGoals();
+  }
+}
+
+// ========== Points ==========
+async function loadPoints() {
+  const d = await api('/api/points');
+  if (!d) return;
+
+  const pts = d.data;
+  document.getElementById('ptsTotal').textContent = pts.total_points || 0;
+  document.getElementById('ptsAvailable').textContent = pts.available_points || 0;
+  document.getElementById('ptsFrozen').textContent = pts.frozen_points || 0;
+
+  const txs = pts.recent_transactions || [];
+  const tbody = document.getElementById('pointsTableBody');
+  if (txs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">📭</div>暂无交易记录</div></td></tr>';
+    return;
+  }
+
+  const srcLabels = { exam:'考试', error_review:'错题复习', daily_checkin:'每日签到', goal_redeem:'目标兑换' };
+  tbody.innerHTML = txs.map(t => `
+    <tr>
+      <td style="font-size:12px">${srcLabels[t.source_type] || t.source_type || '-'}</td>
+      <td style="font-size:13px">${escHtml(t.description || '-')}</td>
+      <td style="font-weight:600;color:${t.points > 0 ? 'var(--green)' : 'var(--red)'}">${t.points > 0 ? '+' : ''}${t.points}</td>
+      <td style="font-size:12px;color:var(--text-dim)">${t.created_at ? t.created_at.slice(5,16) : '-'}</td>
+    </tr>
+  `).join('');
+}
+
+// ========== Utility ==========
+function escHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function refreshCurrentPage() {
+  switchPage(currentPage);
+  showToast('已刷新', 'info');
+}
+
+// ========== Init ==========
+window.addEventListener('DOMContentLoaded', () => {
+  updateGreeting();
+  loadDashboard();
+  setInterval(updateGreeting, 60000);
+
+  setTimeout(() => {
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  }, 400);
+});
+</script>
+</body>
+</html>

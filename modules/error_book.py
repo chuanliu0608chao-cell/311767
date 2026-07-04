@@ -9,6 +9,57 @@ from typing import Dict, List, Optional
 from common.database import execute_query, execute_write
 
 
+def delete_error_record(record_id: str) -> bool:
+    """删除错题记录及关联数据"""
+    # 删除关联的复习记录
+    execute_write(
+        "DELETE FROM review_records WHERE record_id = ?",
+        (record_id,),
+    )
+    # 删除错题与知识点的关联
+    execute_write(
+        "DELETE FROM error_knowledge_map WHERE record_id = ?",
+        (record_id,),
+    )
+    # 删除错题记录本身
+    execute_write(
+        "DELETE FROM error_records WHERE record_id = ?",
+        (record_id,),
+    )
+    return True
+
+
+def get_error_detail(record_id: str) -> Optional[Dict]:
+    """获取错题详细信息（含关联知识点）"""
+    rows = execute_query(
+        "SELECT * FROM error_records WHERE record_id = ?",
+        (record_id,),
+    )
+    if not rows:
+        return None
+
+    record = rows[0]
+
+    # 获取关联的知识点
+    kp_rows = execute_query(
+        """SELECT kp.name, kp.subject, kp.mastery_level
+           FROM error_knowledge_map ek
+           JOIN knowledge_points kp ON ek.kp_id = kp.kp_id
+           WHERE ek.record_id = ?""",
+        (record_id,),
+    )
+    record["knowledge_details"] = kp_rows if kp_rows else []
+
+    # 获取关联的复习记录
+    rev_rows = execute_query(
+        "SELECT * FROM review_records WHERE record_id = ? ORDER BY review_date DESC",
+        (record_id,),
+    )
+    record["reviews"] = rev_rows if rev_rows else []
+
+    return record
+
+
 # 间隔重复时间表（天）
 REVIEW_INTERVALS = [1, 3, 7, 15]
 
@@ -22,9 +73,11 @@ def add_error_record(
     wrong_answer: str = "",
     correct_answer: str = "",
     difficulty: str = "medium",
+    comment: str = "",
 ) -> str:
     """
     添加错题记录
+    :param comment: 批改评语（可选）
     :return: record_id
     """
     record_id = f"err_{uuid.uuid4().hex[:8]}"
@@ -33,12 +86,12 @@ def add_error_record(
     execute_write(
         """INSERT INTO error_records
            (record_id, question_id, subject, problem_text, latex,
-            knowledge_points, wrong_answer, correct_answer, difficulty, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            knowledge_points, wrong_answer, correct_answer, difficulty, comment, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             record_id, question_id, subject, problem_text, latex,
             ",".join(knowledge_points) if knowledge_points else "",
-            wrong_answer, correct_answer, difficulty, now,
+            wrong_answer, correct_answer, difficulty, comment, now,
         ),
     )
 
@@ -47,8 +100,8 @@ def add_error_record(
     review_id = f"rev_{uuid.uuid4().hex[:8]}"
     execute_write(
         """INSERT INTO review_records
-           (review_id, record_id, review_date, next_review_date, status)
-           VALUES (?, ?, ?, ?, ?)""",
+           (review_id, record_id, is_correct, review_date, next_review_date, status)
+           VALUES (?, ?, 0, ?, ?, ?)""",
         (review_id, record_id, now, next_date, "pending"),
     )
 

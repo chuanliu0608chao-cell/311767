@@ -21,7 +21,7 @@ paths:
   /api/photo/recognize:
     post:
       summary: "拍题识别"
-      description: "Windows端上传照片，Ubuntu端使用GLM-4V识别题目内容"
+      description: "Windows端上传照片，Ubuntu端使用Claude Vision识别题目内容"
       requestBody:
         required: true
         content:
@@ -77,7 +77,7 @@ paths:
               example:
                 code: 2
                 data: {}
-                msg: "GLM-4V API调用失败"
+                msg: "Claude Vision API调用失败"
 
   # ==================== 错题本 ====================
   /api/error_book:

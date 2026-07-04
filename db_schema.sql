@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS error_records (
     wrong_answer    TEXT,
     correct_answer  TEXT,
     difficulty      TEXT DEFAULT 'medium' CHECK(difficulty IN ('easy', 'medium', 'hard')),
+    comment         TEXT,  -- 批改评语
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id)
